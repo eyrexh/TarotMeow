@@ -18,6 +18,9 @@ LANGUAGES = {
 }
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
+babel = Babel(app)
+
+@babel.localeselector
 def get_locale():
     # 1. Get language from session
     lang = session.get('language')
@@ -37,8 +40,6 @@ def load_translations(lang):
         fallback_path = os.path.join(os.path.dirname(__file__), '..', 'translations', 'en.json')
         with open(fallback_path, 'r', encoding='utf-8') as f:
             return json.load(f)
-
-babel = Babel(app, locale_selector=get_locale)
 
 @app.before_request
 def before_request():
