@@ -9,8 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatForm = document.getElementById('chat-form');
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
+    const modeSelector = document.getElementById('mode-selector');
 
-    // --- Event Listeners ---
+    let currentMode = 'tarot'; // 'tarot' or 'chat'
+
+    // --- Mode Switching ---
+    modeSelector.addEventListener('click', (e) => {
+        if (e.target.matches('.mode-btn')) {
+            const selectedMode = e.target.dataset.mode;
+            if (selectedMode !== currentMode) {
+                currentMode = selectedMode;
+                document.querySelector('.mode-btn.active').classList.remove('active');
+                e.target.classList.add('active');
+            }
+        }
+    });
 
     // --- Language Switching ---
     function updateUIText() {
@@ -72,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const question = messageInput.value.trim();
         if (question) {
             addUserMessage(question);
-            getTarotReading(question);
+            handleChatSubmission(question);
             messageInput.value = '';
         }
     }
@@ -93,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addTarotMessage(message, useTypingEffect = false) {
-        // Convert markdown bold and italics to HTML
+        // Always parse the message as Markdown to support bolding, etc.
         const formattedMessage = marked.parse(message);
 
         if (useTypingEffect) {
@@ -101,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const bubble = messageElement.querySelector('.tarot-bubble');
             typeMessage(bubble, formattedMessage);
         } else {
+            // Directly append the parsed HTML
             appendMessage(formattedMessage, 'tarot');
         }
     }
@@ -241,49 +255,63 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function getTarotReading(question) {
-        // Add a message to focus the user's energy
-        const thinkingMessage = translations.thinkingMessage || "Hold your question in your mind... Breathe... The cards are listening.";
-        addTarotMessage(thinkingMessage, true);
-        await new Promise(resolve => setTimeout(resolve, 2500)); // Pause for reflection
+    async function handleChatSubmission(question) {
+        // Show typing indicator for chat mode, or thinking message for tarot mode
+        if (currentMode === 'chat') {
+            showTypingIndicator();
+        } else {
+            const thinkingMessage = translations.thinkingMessage || "Hold your question in your mind... Breathe... The cards are listening.";
+            addTarotMessage(thinkingMessage, true);
+            await new Promise(resolve => setTimeout(resolve, 2500)); // Pause for reflection
+        }
 
-        const readingPromise = fetch('/get_reading', {
+        const readingPromise = fetch('/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question }),
+            body: JSON.stringify({ question, mode: currentMode }),
         });
 
-        const animationContainer = document.createElement('div');
-        animationContainer.className = 'shuffle-animation-container';
-        const animationMessage = appendMessage(animationContainer, 'tarot', 'card');
+        let animationMessage;
+        if (currentMode === 'tarot') {
+            const animationContainer = document.createElement('div');
+            animationContainer.className = 'shuffle-animation-container';
+            animationMessage = appendMessage(animationContainer, 'tarot', 'card');
 
-        animationContainer.innerHTML = '<div class="shuffling-card"></div>';
-        await new Promise(resolve => setTimeout(resolve, 1200));
+            animationContainer.innerHTML = '<div class="shuffling-card"></div>';
+            await new Promise(resolve => setTimeout(resolve, 1200));
 
-        animationContainer.innerHTML = `
-            <div class="shuffling-card" style="animation: deal-past 0.5s forwards;"></div>
-            <div class="shuffling-card" style="animation: deal-present 0.5s forwards;"></div>
-            <div class="shuffling-card" style="animation: deal-future 0.5s forwards;"></div>
-        `;
-        await new Promise(resolve => setTimeout(resolve, 600));
+            animationContainer.innerHTML = `
+                <div class="shuffling-card" style="animation: deal-past 0.5s forwards;"></div>
+                <div class="shuffling-card" style="animation: deal-present 0.5s forwards;"></div>
+                <div class="shuffling-card" style="animation: deal-future 0.5s forwards;"></div>
+            `;
+            await new Promise(resolve => setTimeout(resolve, 600));
+        }
 
         try {
             const response = await readingPromise;
             if (!response.ok) {
-                animationMessage.remove();
-                const errorMessage = translations.errorMessage || 'An error occurred. Please try again.';
-                addTarotMessage(errorMessage);
+                throw new Error(translations.errorMessage || 'An error occurred. Please try again.');
             }
             const data = await response.json();
 
-            // The reading is now passed to displayCards, which handles the reveal
-            animationContainer.className = 'card-display-container';
-            displayCards(data.cards, animationContainer, data.reading);
+            if (currentMode === 'chat') {
+                removeTypingIndicator();
+                addTarotMessage(data.reading, true);
+            } else {
+                // The reading is now passed to displayCards, which handles the reveal
+                const animationContainer = animationMessage.querySelector('.shuffle-animation-container');
+                animationContainer.className = 'card-display-container';
+                displayCards(data.cards, animationContainer, data.reading);
+            }
 
         } catch (error) {
-            const animationBubble = document.querySelector('.shuffle-animation-container');
-            if (animationBubble) animationBubble.closest('.message').remove();
-            addTarotMessage(error.message || 'An error occurred. Please try again.');
+            if (currentMode === 'chat') {
+                removeTypingIndicator();
+            } else if (animationMessage) {
+                animationMessage.remove();
+            }
+            addTarotMessage(error.message, true);
         }
     }
 

@@ -29,10 +29,16 @@
             <!-- Messages will be appended here -->
         </div>
 
-        <form id="chat-form">
+                <div id="chat-input-area">
+            <div id="mode-selector">
+                <button class="mode-btn active" data-mode="tarot" data-translate-key="tarotMode">Tarot</button>
+                <button class="mode-btn" data-mode="chat" data-translate-key="chatMode">Chat</button>
+            </div>
+            <form id="chat-form">
                         <input type="text" id="message-input" data-translate-key="inputPlaceholder" placeholder="Type your question..." autocomplete="off" required>
                         <button type="button" id="send-btn" data-translate-key="sendButton">Send</button>
-        </form>
+                    </form>
+        </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

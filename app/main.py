@@ -105,10 +105,11 @@ def set_language(lang):
         session['language'] = lang
     return jsonify({'status': 'success', 'language': lang})
 
-@app.route('/get_reading', methods=['POST'])
-def get_reading():
+@app.route('/chat', methods=['POST'])
+def chat():
     data = request.get_json()
     question = data.get('question')
+    mode = data.get('mode', 'tarot') # Default to 'tarot' if mode not provided
 
     if not question:
         return jsonify({'error': 'Question is required.'}), 400
@@ -124,72 +125,140 @@ def get_reading():
     for entry in session['history']:
         history_string += f"Previous Question: {entry['question']}\nPrevious Reading: {entry['reading']}\n\n"
 
-    # 1. Draw three cards and determine their orientation
-    drawn_cards_info = []
-    sampled_cards = random.sample(TAROT_CARDS, 3)
-    for card in sampled_cards:
-        orientation = random.choice(['Upright', 'Reversed'])
-        drawn_cards_info.append({**card, 'orientation': orientation})
+    if mode == 'tarot':
+        # --- TAROT MODE: Draw new cards and perform a full reading ---
+        drawn_cards_info = []
+        sampled_cards = random.sample(TAROT_CARDS, 3)
+        for card in sampled_cards:
+            orientation = random.choice(['Upright', 'Reversed'])
+            drawn_cards_info.append({**card, 'orientation': orientation})
 
-    past_card, present_card, future_card = drawn_cards_info[0], drawn_cards_info[1], drawn_cards_info[2]
+        session['last_cards'] = drawn_cards_info  # Save cards to session
+        session.modified = True
 
-    # 2. **RAG Step**: Retrieve detailed meanings from the knowledge base
-    def get_card_meaning(card_info):
-        card_name = card_info['name']
-        orientation = card_info['orientation'].lower()
-        # Fallback to the card name if not found in the knowledge base
-        knowledge = TAROT_KNOWLEDGE_BASE.get(card_name, {})
-        return knowledge.get('meanings', {}).get(orientation, "No specific meaning found.")
+        prompt = create_tarot_prompt(question, drawn_cards_info, history_string)
+        reading, error = get_gemini_reading(prompt)
 
+        if error:
+            return jsonify({'error': error}), 500
+
+        # Prepare card data for the frontend
+        past_card, present_card, future_card = drawn_cards_info[0], drawn_cards_info[1], drawn_cards_info[2]
+        response_cards = {
+            'past': format_card_for_response(past_card),
+            'present': format_card_for_response(present_card),
+            'future': format_card_for_response(future_card)
+        }
+
+    else: # mode == 'chat'
+        # --- CHAT MODE: Use last drawn cards for a follow-up --- 
+        last_cards = session.get('last_cards')
+        if not last_cards:
+            return jsonify({'reading': g.translations.get('noCardsDrawnError', 'You need to ask a tarot question first to draw some cards!')}), 200
+
+        prompt = create_chat_prompt(question, last_cards, history_string)
+        reading, error = get_gemini_reading(prompt)
+
+        if error:
+            return jsonify({'error': error}), 500
+        
+        response_cards = None # No new cards are sent in chat mode
+
+
+
+
+
+
+
+    # --- Update History ---
+    session['history'].append({'question': question, 'reading': reading})
+    if len(session['history']) > 3: # Keep history to the last 3 interactions
+        session['history'].pop(0)
+    session.modified = True
+
+    # --- Prepare and Send Response ---
+    response_data = {
+        'reading': reading,
+        'cards': response_cards
+    }
+    return jsonify(response_data)
+
+# --- Helper Functions for Prompt Generation ---
+
+def get_card_meaning(card_info):
+    card_name = card_info['name']
+    orientation = card_info['orientation'].lower()
+    knowledge = TAROT_KNOWLEDGE_BASE.get(card_name, {})
+    return knowledge.get('meanings', {}).get(orientation, "No specific meaning found.")
+
+def format_card_for_response(card_info):
+    translations = g.translations
+    card_name = translations['card_names'].get(card_info['name'], card_info['name'])
+    orientation = translations.get(card_info['orientation'].lower(), card_info['orientation'])
+    return {'name': card_name, 'img': url_for('static', filename=f'images/{card_info["img"]}'), 'orientation': orientation}
+
+def create_tarot_prompt(question, drawn_cards, history):
+    translations = g.translations
+    language_name = LANGUAGES.get(g.locale, 'English')
+
+    past_card, present_card, future_card = drawn_cards[0], drawn_cards[1], drawn_cards[2]
     past_meaning = get_card_meaning(past_card)
     present_meaning = get_card_meaning(present_card)
     future_meaning = get_card_meaning(future_card)
 
-    # 3. Create the augmented prompt for Gemini
-    language_name = LANGUAGES.get(g.locale, 'English')
-    translations = g.translations
+    past_card_fmt = format_card_for_response(past_card)
+    present_card_fmt = format_card_for_response(present_card)
+    future_card_fmt = format_card_for_response(future_card)
 
-    # Translate card names and orientation for the prompt and response
-    past_card_name = translations['card_names'].get(past_card['name'], past_card['name'])
-    present_card_name = translations['card_names'].get(present_card['name'], present_card['name'])
-    future_card_name = translations['card_names'].get(future_card['name'], future_card['name'])
-
-    past_orientation = translations.get(past_card['orientation'].lower(), past_card['orientation'])
-    present_orientation = translations.get(present_card['orientation'].lower(), present_card['orientation'])
-    future_orientation = translations.get(future_card['orientation'].lower(), future_card['orientation'])
-
-    prompt = (
+    return (
         f"You are {translations['aiName']}, a kind, cute, and professional tarot-reading cat. "
         f"You MUST use the provided context to interpret the cards. Do not use your own general knowledge of tarot.\n\n"
-        f"Here is the user's conversation history:\n"
-        f"---BEGIN CONVERSATION HISTORY---\n{history_string}---END CONVERSATION HISTORY---\n\n"
+        f"Here is the user's conversation history:\n{history}\n"
         f"The user's NEW question is: '{question}'\n\n"
         f"You have drawn three cards. Here is the relevant knowledge for each card:\n"
-        f"---BEGIN TAROT KNOWLEDGE---\n"
-        f"1. {translations['past']}: {past_card_name} ({past_orientation})\n"
-        f"   - Meaning: {past_meaning}\n"
-        f"2. {translations['present']}: {present_card_name} ({present_orientation})\n"
-        f"   - Meaning: {present_meaning}\n"
-        f"3. {translations['future']}: {future_card_name} ({future_orientation})\n"
-        f"   - Meaning: {future_meaning}\n"
-        f"---END TAROT KNOWLEDGE---\n\n"
+        f"1. {translations['past']}: {past_card_fmt['name']} ({past_card_fmt['orientation']}) - Meaning: {past_meaning}\n"
+        f"2. {translations['present']}: {present_card_fmt['name']} ({present_card_fmt['orientation']}) - Meaning: {present_meaning}\n"
+        f"3. {translations['future']}: {future_card_fmt['name']} ({future_card_fmt['orientation']}) - Meaning: {future_meaning}\n\n"
         f"INSTRUCTIONS:\n"
-        f"1. Give a nice, friendly, and comforting greeting.\n"
-        f"2. Provide a gentle, comforting, and insightful interpretation based ONLY on the meanings provided above.\n"
+        f"1. Give a nice, friendly, and comforting greeting. As a cat, you can add cat-like actions or sounds, but you MUST put them in square brackets.\n"
+        f"2. Provide a gentle, comforting, and insightful interpretation based ONLY on the meanings provided.\n"
         f"3. Directly relate your interpretation to the user's question: '{question}'.\n"
-        f"4. Analyze the conversation history. If no history is provided, treat it as a fresh start If the new question is a follow-up, connect your new reading to the previous ones.\n"
-        f"5. Structure your response with clear, bold headings for each card.\n"
-        f"6. Provide a comprehensive and smart summary at the end, don't repeat the above paragraphs.\n"
-        f"7. Respond entirely in {language_name} using Markdown format."
+        f"4. Structure your response with clear headings for each card position (Past, Present, Future) and the card name. These headings MUST be bold (e.g., `**{translations['past']}**`).\n"
+        f"5. Provide a comprehensive and inspiring summary at the end.\n"
+        f"6. Respond entirely in {language_name} using Markdown format."
     )
 
-    # 4. Get reading from Gemini using the fastest API key
+def create_chat_prompt(question, last_cards, history):
+    translations = g.translations
+    language_name = LANGUAGES.get(g.locale, 'English')
+
+    card_details = []
+    for card in last_cards:
+        card_fmt = format_card_for_response(card)
+        meaning = get_card_meaning(card)
+        card_details.append(f"- {card_fmt['name']} ({card_fmt['orientation']}): {meaning}")
+    card_knowledge = "\n".join(card_details)
+
+    return (
+        f"You are {translations['aiName']}, a kind, cute, and professional tarot-reading cat.\n"
+        f"The user is asking a follow-up question about a previous tarot reading.\n\n"
+        f"Here is the user's conversation history:\n{history}\n"
+        f"The cards from the last reading were:\n{card_knowledge}\n\n"
+        f"The user's NEW follow-up question is: '{question}'\n\n"
+        f"INSTRUCTIONS:\n"
+        f"1. Do NOT draw new cards. Your response must be based on the cards already drawn.\n"
+        f"2. Provide a comforting, insightful, and concise answer to the follow-up question. As a cat, you can add cat-like actions or sounds, but you MUST put them in square brackets.\n"
+        f"3. Directly connect your answer to the meanings of the cards from the previous reading.\n"
+        f"4. Keep your response focused on the user's specific question.\n"
+        f"5. Respond entirely in {language_name} using Markdown format."
+    )
+
+def get_gemini_reading(prompt):
     if not api_configured:
-        return jsonify({'error': 'API not configured. Check .env file.'}), 500
+        return None, 'API not configured. Check .env file.'
 
     result_queue = queue.Queue()
     threads = []
-
     for key in api_keys:
         thread = threading.Thread(target=get_gemini_response, args=(key, prompt, result_queue))
         threads.append(thread)
@@ -198,30 +267,13 @@ def get_reading():
     try:
         result = result_queue.get(timeout=15)
         print(f"Fastest response from key ending in ...{result['key_used'][-4:]}")
-        reading = result['text']
+        return result['text'], None
     except queue.Empty:
         print("All API keys failed or timed out.")
-        return jsonify({'error': 'Could not get a response from the tarot spirits. Please try again.'}), 500
+        return None, 'Could not get a response from the tarot spirits. Please try again.'
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        return jsonify({'error': str(e)}), 500
-
-    # --- Update History ---
-    session['history'].append({'question': question, 'reading': reading})
-    if len(session['history']) > 2: # Keep history to the last 2 interactions
-        session['history'].pop(0)
-    session.modified = True
-
-    # 5. Prepare response
-    response_data = {
-        'reading': reading,
-        'cards': {
-            'past': {'name': past_card_name, 'img': url_for('static', filename=f'images/{past_card["img"]}'), 'orientation': past_orientation},
-            'present': {'name': present_card_name, 'img': url_for('static', filename=f'images/{present_card["img"]}'), 'orientation': present_orientation},
-            'future': {'name': future_card_name, 'img': url_for('static', filename=f'images/{future_card["img"]}'), 'orientation': future_orientation}
-        }
-    }
-    return jsonify(response_data)
+        return None, str(e)
 
 if __name__ == '__main__':
     app.run(debug=True)

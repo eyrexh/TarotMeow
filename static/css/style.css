@@ -287,11 +287,46 @@ body {
     font-style: italic;
 }
 
+#chat-input-area {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #ddd;
+    background-color: #fff;
+}
+
+#mode-selector {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 0.75rem 1rem 0;
+}
+
+.mode-btn {
+    background-color: #e4e6eb;
+    color: #050505;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.mode-btn:hover {
+    background-color: #d1d3d8;
+}
+
+.mode-btn.active {
+    background-color: #6a11cb;
+    color: #fff;
+    font-weight: 700;
+}
+
 #chat-form {
     display: flex;
     padding: 1rem;
-    border-top: 1px solid #ddd;
-    background-color: #fff;
+    /* border-top and background-color moved to #chat-input-area */
 }
 
 #message-input {
@@ -328,12 +363,7 @@ body {
 
 .tarot-bubble strong {
     font-weight: 600;
-    color: #fff;
-}
-
-.tarot-bubble strong {
-    font-weight: 600;
-    color: #fff;
+    color: #9B59B6; /* A nice mystical purple */
 }
 
 .tarot-bubble em {
