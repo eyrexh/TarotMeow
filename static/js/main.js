@@ -106,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addTarotMessage(message, useTypingEffect = false) {
-        // Always parse the message as Markdown to support bolding, etc.
         const formattedMessage = marked.parse(message);
 
         if (useTypingEffect) {
@@ -114,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const bubble = messageElement.querySelector('.tarot-bubble');
             typeMessage(bubble, formattedMessage);
         } else {
-            // Directly append the parsed HTML
             appendMessage(formattedMessage, 'tarot');
         }
     }

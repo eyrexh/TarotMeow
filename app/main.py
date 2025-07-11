@@ -222,10 +222,12 @@ def create_tarot_prompt(question, drawn_cards, history):
         f"INSTRUCTIONS:\n"
         f"1. Give a nice, friendly, and comforting greeting. As a cat, you can add cat-like actions or sounds, but you MUST put them in square brackets.\n"
         f"2. Provide a gentle, comforting, and insightful interpretation based ONLY on the meanings provided.\n"
-        f"3. Directly relate your interpretation to the user's question: '{question}'.\n"
-        f"4. Structure your response with clear headings for each card position (Past, Present, Future) and the card name. These headings MUST be bold (e.g., `**{translations['past']}**`).\n"
-        f"5. Provide a comprehensive and inspiring summary at the end.\n"
-        f"6. Respond entirely in {language_name} using Markdown format."
+        f"3. Directly relate your interpretation to the user's new question: '{question}'.\n"
+        f"4. **If the conversation history is not empty, briefly acknowledge the previous topics and relate this new reading to the ongoing conversation to provide a continuous experience.**\n"
+        f"5. Structure your response with clear headings for each card position (Past, Present, Future) and the card name. These headings MUST be bold (e.g., `**{translations['past']}**`).\n"
+        f"6. Provide a comprehensive and inspiring summary at the end.\n"
+        f"7. Do not mention the time or date in the response unless asked.\n"
+        f"8. Respond entirely in {language_name} using Markdown format."
     )
 
 def create_chat_prompt(question, last_cards, history):
@@ -246,11 +248,12 @@ def create_chat_prompt(question, last_cards, history):
         f"The cards from the last reading were:\n{card_knowledge}\n\n"
         f"The user's NEW follow-up question is: '{question}'\n\n"
         f"INSTRUCTIONS:\n"
-        f"1. Do NOT draw new cards. Your response must be based on the cards already drawn.\n"
-        f"2. Provide a comforting, insightful, and concise answer to the follow-up question. As a cat, you can add cat-like actions or sounds, but you MUST put them in square brackets.\n"
-        f"3. Directly connect your answer to the meanings of the cards from the previous reading.\n"
-        f"4. Keep your response focused on the user's specific question.\n"
-        f"5. Respond entirely in {language_name} using Markdown format."
+        f"1. Do NOT draw new cards. Your response MUST be based on the cards from the last reading.\n"
+        f"2. **Crucially, you must explicitly reference the user's previous question and your previous answer (from the history) and explain how the cards' meanings connect to this NEW follow-up question.**\n"
+        f"3. Provide a comforting, insightful, and concise answer. As a cat, you can add cat-like actions or sounds, but you MUST put them in square brackets.\n"
+        f"4. Keep your response focused and directly answer the user's new question: '{question}'.\n"
+        f"5. Do not mention the time or date in the response unless asked.\n"
+        f"6. Respond entirely in {language_name} using Markdown format."
     )
 
 def get_gemini_reading(prompt):
