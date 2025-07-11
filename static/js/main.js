@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    let currentLanguage = initialLocale; // Set from backend
     // DOM Elements
+    const languageSelector = document.getElementById('language-selector');
     const introOverlay = document.getElementById('intro-overlay');
     const beginBtn = document.getElementById('begin-btn');
     const chatContainer = document.querySelector('.chat-container');
@@ -10,14 +12,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
 
-    // Start Chat
+    // --- Language Switching ---
+    function updateUIText() {
+        if (!translations) return;
+
+        document.querySelectorAll('[data-translate-key]').forEach(element => {
+            const key = element.getAttribute('data-translate-key');
+            if (translations[key]) {
+                element.textContent = translations[key];
+            }
+        });
+
+        // Update dynamic elements like placeholders and button text
+        document.getElementById('chat-input').placeholder = translations.inputPlaceholder || 'Type your question...';
+        document.getElementById('send-button').textContent = translations.sendButton || 'Send';
+        document.title = translations.pageTitle || 'Tarot Meow';
+
+        // Update initial bot message if chat is empty
+        const chatBox = document.getElementById('chat-box');
+        if (chatBox.children.length === 1 && chatBox.querySelector('.bot-message')) {
+            const botMessageContent = chatBox.querySelector('.message-content');
+            if (botMessageContent) {
+                botMessageContent.innerHTML = marked.parse(translations.initialBotMessage);
+            }
+        }
+    }
+
+    languageSelector.addEventListener('click', (e) => {
+        if (e.target.matches('.lang-btn')) {
+            const selectedLang = e.target.getAttribute('data-lang');
+            if (selectedLang !== currentLanguage) {
+                fetch(`/set_language/${selectedLang}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Reload the page to get new translations from the server
+                            window.location.reload();
+                            e.target.classList.add('active');
+                        }
+                    })
+                    .catch(err => console.error('Language switch failed:', err));
+            }
+        }
+    });
+
+    // --- Event Listeners ---
     beginBtn.addEventListener('click', () => {
         introOverlay.style.opacity = '0';
         setTimeout(() => {
             introOverlay.style.display = 'none';
             chatContainer.style.display = 'flex';
             chatContainer.style.opacity = '1';
-            addTarotMessage("Welcome, My human friend! I am TarotMeow, ready to reveal the secrets of the cards. What would you like to ask?");
+            addTarotMessage(translations.initialBotMessage);
         }, 500); // Match CSS transition duration
     });
 
@@ -126,7 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const revealBtn = document.createElement('button');
         revealBtn.id = 'reveal-reading-btn';
-        revealBtn.textContent = 'See Card Reading';
+        const revealButtonText = translations.revealButton || "See Card Reading";
+        revealBtn.textContent = revealButtonText;
         revealBtn.style.display = 'none'; // Hide it initially
         container.parentNode.insertBefore(revealBtn, container.nextSibling);
 
@@ -165,12 +212,12 @@ document.addEventListener('DOMContentLoaded', () => {
             cardBack.appendChild(backImg);
 
             const positionLabel = document.createElement('p');
-            positionLabel.textContent = position.charAt(0).toUpperCase() + position.slice(1);
+            positionLabel.textContent = translations[position.toLowerCase()] || position.charAt(0).toUpperCase() + position.slice(1);
 
             const nameLabel = document.createElement('span');
             let cardName = cardData.name;
             if (cardData.orientation === 'Reversed') {
-                cardName += ' (Reversed)';
+                cardName += ` ${translations.reversed}`;
             }
             nameLabel.textContent = cardName;
 
@@ -196,7 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function getTarotReading(question) {
         // Add a message to focus the user's energy
-        addTarotMessage("Hold your question in your mind... Breathe... The cards are listening.", true);
+        const thinkingMessage = translations.thinkingMessage || "Hold your question in your mind... Breathe... The cards are listening.";
+        addTarotMessage(thinkingMessage, true);
         await new Promise(resolve => setTimeout(resolve, 2500)); // Pause for reflection
 
         const readingPromise = fetch('/get_reading', {
@@ -223,7 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await readingPromise;
             if (!response.ok) {
                 animationMessage.remove();
-                throw new Error('The cards are shy... please try again.');
+                const errorMessage = translations.errorMessage || 'An error occurred. Please try again.';
+                addTarotMessage(errorMessage);
             }
             const data = await response.json();
 
@@ -242,9 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
         messageList.scrollTop = messageList.scrollHeight;
     }
 
-    // --- Initial Setup ---
-    beginBtn.textContent = "Begin";
-    document.querySelector('#intro-content h1').textContent = "TarotMeow";
-    document.querySelector('#intro-content p').textContent = "Get a tarot reading from the mystical cat.";
-    messageInput.placeholder = "Type your question...";
+        // --- Initial Setup ---
+    updateUIText(currentLanguage); // Set initial text based on server-side language
 });

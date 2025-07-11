@@ -1,36 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ g.locale }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarot Meow</title>
+        <title data-translate-key="pageTitle">Tarot Meow</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div id="intro-overlay">
+                <div id="language-selector">
+            {% for lang, name in languages.items() %}
+                <button class="lang-btn {% if g.locale == lang %}active{% endif %}" data-lang="{{ lang }}">{{ name }}</button>
+            {% endfor %}
+        </div>
         <div id="intro-content">
             <img src="/static/images/wizard-cat.png" alt="TarotMeow Mascot" id="intro-mascot">
-            <h1>Welcome to TarotMeow</h1>
-            <p>Your mystical guide to the past, present, and future.</p>
-            <button id="begin-btn">Begin</button>
+                        <h1 data-translate-key="welcomeTitle">Welcome to TarotMeow</h1>
+                        <p data-translate-key="welcomeMessage">Your mystical guide to the past, present, and future.</p>
+                        <button id="begin-btn" data-translate-key="beginButton">Begin</button>
         </div>
     </div>
 
     <div class="chat-container" style="display: none;">
         <div id="chat-header">
-            <h2>TarotMeow</h2>
+                        <h2 data-translate-key="chatHeader">TarotMeow</h2>
         </div>
         <div id="message-list">
             <!-- Messages will be appended here -->
         </div>
 
         <form id="chat-form">
-            <input type="text" id="message-input" placeholder="Type your question..." autocomplete="off" required>
-            <button type="button" id="send-btn">Send</button>
+                        <input type="text" id="message-input" data-translate-key="inputPlaceholder" placeholder="Type your question..." autocomplete="off" required>
+                        <button type="button" id="send-btn" data-translate-key="sendButton">Send</button>
         </form>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script>
+        // Pass translations from Flask to JavaScript
+        const translations = {{ translations|tojson|safe }};
+        const initialLocale = '{{ g.locale }}';
+    </script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/typing.js') }}"></script>
 </body>
