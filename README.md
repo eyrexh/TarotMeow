@@ -8,7 +8,16 @@ Have a question for the universe? Let our wise and witty feline guide draw the c
 
 ---
 
-<!-- Placeholder: Replace with a real screenshot URL -->
+## 📸 Screenshots
+
+Here’s a sneak peek into the world of TarotMeow:
+
+| Main Page | Tarot Reading | Follow-up Chat |
+| :---: | :---: | :---: |
+| *Image placeholder* | *Image placeholder* | *Image placeholder* |
+| `images/screenshot_main.png` | `images/screenshot_reading.png` | `images/screenshot_chat.png` |
+
+To add your own screenshots, please see the instructions at the end of this file.
 
 ## Features
 
@@ -84,3 +93,16 @@ Auto-deployment is enabled, so any push to the `main` branch will automatically 
 ---
 
 Enjoy your journey into the mystical world of TarotMeow! 🐾
+
+## 🖼️ How to Add Screenshots
+
+1. **Run the application locally** following the setup instructions above.
+2. **Take screenshots** of the app. Here are some common methods:
+   * **macOS:** Press `Cmd + Shift + 4` to select an area to capture.
+   * **Windows:** Use the Snipping Tool or press `Win + Shift + S`.
+3. **Save the images** inside the `/images` directory in the root of this project.
+4. **Update this `README.md` file** by replacing the placeholder text under the [Screenshots](#-screenshots) section with your image, like this:
+
+    ```markdown
+    ![Description of Image](./images/your-screenshot-filename.png)
+    ```
