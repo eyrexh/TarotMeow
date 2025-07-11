@@ -177,7 +177,7 @@ def get_reading():
         f"1. Give a nice, friendly, and comforting greeting.\n"
         f"2. Provide a gentle, comforting, and insightful interpretation based ONLY on the meanings provided above.\n"
         f"3. Directly relate your interpretation to the user's question: '{question}'.\n"
-        f"4. Analyze the conversation history. If no history is provided, treat it as a fresh start, but don't mention it. If the new question is a follow-up, connect your new reading to the previous ones.\n"
+        f"4. Analyze the conversation history. If no history is provided, treat it as a fresh start If the new question is a follow-up, connect your new reading to the previous ones.\n"
         f"5. Structure your response with clear, bold headings for each card.\n"
         f"6. Provide a comprehensive and smart summary at the end, don't repeat the above paragraphs.\n"
         f"7. Respond entirely in {language_name} using Markdown format."
