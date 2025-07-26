@@ -12,9 +12,21 @@ Have a question for the universe? Let our wise and witty feline guide draw the c
 
 Here’s a sneak peek into the world of TarotMeow:
 
-| Welcome Page | Main Page | Tarot Dealing | Reading |
-| :---: | :---: | :---: | :---: |
-| ![Welcome Page](./templates/welcome.png) | ![Main Page](./templates/main.png) | ![Tarot](./templates/tarot.png) | ![Reading](./templates/reading.png) |
+### Welcome Page
+
+![Welcome Page](./templates/welcome.png)
+
+### Main Page
+
+![Main Page](./templates/main.png)
+
+### Tarot Dealing
+
+![Tarot](./templates/tarot.png)
+
+### Reading
+
+![Reading](./templates/reading.png)
 
 To add your own screenshots, please see the instructions at the end of this file.
 
