@@ -28,8 +28,6 @@ Here’s a sneak peek into the world of TarotMeow:
 
 ![Reading](./templates/reading.png)
 
-To add your own screenshots, please see the instructions at the end of this file.
-
 ## Features
 
 * **AI-Powered Tarot Readings:** Get a three-card (Past, Present, Future) reading for any question you have.
